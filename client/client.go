@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -67,17 +68,17 @@ func GetUrl(symbol string, functype ApiFuncType, options ...url.Values) (*url.UR
 	return url.Parse(ALPHAVANTAGE_URL + "/query?" + v.Encode())
 }
 
-func apndtz(b []byte) []byte {
-    r := "\"" + string(b) + "T00:00:00Z00:00\""
-    return []byte(r)
-}
-
-func cleanbytes(b []byte) []byte {
-    // Removes leading numbers from keys
-    l := LEADING_NUMBERS.ReplaceAllLiteral(b, []byte(""))
-    // Enforces RFC 3339 Format for dates
-    l = RFC_3339.ReplaceAllFunc(l, apndtz)
-    return l
+func MarshalQuote(b []byte) *Quote {
+	quote := new(GlobalQuoteResponse)
+	b = LEADING_NUMBERS.ReplaceAllLiteral(b, []byte(""))
+	b = RFC_3339.ReplaceAll(b, []byte("${1}T00:00:00Z"))
+	s := string(b)
+	print(s)
+	err := json.Unmarshal(b, quote)
+	if err != nil {
+		panic("failed to marshal quote")
+	}
+	return &quote.GlobalQuote
 }
 
 func Get(symbol string, functype ApiFuncType, options ...url.Values) []byte {
@@ -93,7 +94,7 @@ func Get(symbol string, functype ApiFuncType, options ...url.Values) []byte {
 	if b, err := ioutil.ReadAll(response.Body); err != nil {
 		log.Fatal(err)
 	} else {
-        return cleanbytes(b)
+		return b
 	}
 	panic("We fucked up")
 }
